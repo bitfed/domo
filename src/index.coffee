@@ -35,52 +35,54 @@ class module.exports extends irc.Client
     for arg in arguments
       util.log 'Error: '.red + util.inspect arg, colors: true
 
-  load: (mod, cb) =>
-    try
-      module = require(mod)
-    catch err
+  load: (moduleName, moduleClass) =>
+    unless moduleClass?
+      try
+        moduleClass = require(moduleName)
+      catch err
+        msg = if err.code is 'MODULE_NOT_FOUND'
+          "Module #{moduleName} not found"
+        else
+          "Module #{moduleName} cannot be loaded"
+        return @error msg, err.message
 
-      msg = if err.code is 'MODULE_NOT_FOUND'
-        "Module #{mod} not found"
-      else
-        "Module #{mod} cannot be loaded"
+    if @modules.hasOwnProperty moduleName
+      return @error "Module #{moduleName} already loaded"
 
-      @error msg, err.message
-      return cb?(msg)
+    @modules[moduleName] = new moduleClass @moduleInstance(moduleName)
 
-    if @modules.hasOwnProperty mod
-      msg = "Module #{mod} already loaded"
-      @error msg
-      return cb?(msg)
+    @info "Loaded module #{moduleName}"
 
-    @info "Loaded module #{mod}"
 
-    module = new Module(@) if typeof Module is 'function'
+  unload: (moduleName, inRequireCache = true) =>
+    unless @modules.hasOwnProperty moduleName
+      return @error "Module #{mod} not loaded"
 
-    @modules[mod] = module
+    @modules[moduleName].destruct?()
 
-    module.init?(@)
+    delete require.cache[require.resolve(moduleName)] if inRequireCache
+    delete @modules[moduleName]
 
-    cb? null
+    for eventName, events of @._events
+      if _.isArray(events)
+        @._events[eventName] = _.filter events, (event) ->
+          not event.moduleName? or event.moduleName isnt moduleName
+        break
+      if events.moduleName? and events.moduleName is moduleName
+        delete @._events[eventName]
 
-  stop: (mod, cb) =>
-    unless @modules.hasOwnProperty mod
-      msg = "Module #{mod} not loaded"
-      @error msg
-      return cb?(msg)
 
-    @modules[mod].destruct?()
-    delete require.cache[require.resolve(mod)]
-    delete @modules[mod]
+    @info "Unloaded module #{moduleName}"
 
-    @info "Stopped module #{mod}"
+  moduleInstance: (moduleName) =>
+    _.extend _.omit(@, ['on']),
+      on: (event, middlewares..., fn) =>
+        wrapped = @wrap fn, middlewares
+        wrapped.moduleName = moduleName
+        @addListener event, wrapped
 
-    cb? null
-
-  addListener: (event, middlewares..., fn) ->
-    super event, @wrap fn, middlewares
-
-  on: -> @addListener arguments...
+  on: (event, middlewares..., fn) ->
+    @addListener event, @wrap fn, middlewares
 
   once: (event, middlewares..., fn) -> super event, @wrap fn, middlewares
 

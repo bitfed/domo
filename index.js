@@ -16,7 +16,8 @@ module.exports = (function(_super) {
   __extends(exports, _super);
 
   function exports() {
-    this.stop = __bind(this.stop, this);
+    this.moduleInstance = __bind(this.moduleInstance, this);
+    this.unload = __bind(this.unload, this);
     this.load = __bind(this.load, this);
     var module, _i, _len, _ref;
     this.middlewares = [];
@@ -90,56 +91,72 @@ module.exports = (function(_super) {
     return _results;
   };
 
-  exports.prototype.load = function(mod, cb) {
-    var err, module, msg;
-    try {
-      module = require(mod);
-    } catch (_error) {
-      err = _error;
-      msg = err.code === 'MODULE_NOT_FOUND' ? "Module " + mod + " not found" : "Module " + mod + " cannot be loaded";
-      this.error(msg, err.message);
-      return typeof cb === "function" ? cb(msg) : void 0;
+  exports.prototype.load = function(moduleName, moduleClass) {
+    var err, msg;
+    if (moduleClass == null) {
+      try {
+        moduleClass = require(moduleName);
+      } catch (_error) {
+        err = _error;
+        msg = err.code === 'MODULE_NOT_FOUND' ? "Module " + moduleName + " not found" : "Module " + moduleName + " cannot be loaded";
+        return this.error(msg, err.message);
+      }
     }
-    if (this.modules.hasOwnProperty(mod)) {
-      msg = "Module " + mod + " already loaded";
-      this.error(msg);
-      return typeof cb === "function" ? cb(msg) : void 0;
+    if (this.modules.hasOwnProperty(moduleName)) {
+      return this.error("Module " + moduleName + " already loaded");
     }
-    this.info("Loaded module " + mod);
-    if (typeof Module === 'function') {
-      module = new Module(this);
-    }
-    this.modules[mod] = module;
-    if (typeof module.init === "function") {
-      module.init(this);
-    }
-    return typeof cb === "function" ? cb(null) : void 0;
+    this.modules[moduleName] = new moduleClass(this.moduleInstance(moduleName));
+    return this.info("Loaded module " + moduleName);
   };
 
-  exports.prototype.stop = function(mod, cb) {
-    var msg, _base;
-    if (!this.modules.hasOwnProperty(mod)) {
-      msg = "Module " + mod + " not loaded";
-      this.error(msg);
-      return typeof cb === "function" ? cb(msg) : void 0;
+  exports.prototype.unload = function(moduleName, inRequireCache) {
+    var eventName, events, _base, _ref;
+    if (inRequireCache == null) {
+      inRequireCache = true;
     }
-    if (typeof (_base = this.modules[mod]).destruct === "function") {
+    if (!this.modules.hasOwnProperty(moduleName)) {
+      return this.error("Module " + mod + " not loaded");
+    }
+    if (typeof (_base = this.modules[moduleName]).destruct === "function") {
       _base.destruct();
     }
-    delete require.cache[require.resolve(mod)];
-    delete this.modules[mod];
-    this.info("Stopped module " + mod);
-    return typeof cb === "function" ? cb(null) : void 0;
+    if (inRequireCache) {
+      delete require.cache[require.resolve(moduleName)];
+    }
+    delete this.modules[moduleName];
+    _ref = this._events;
+    for (eventName in _ref) {
+      events = _ref[eventName];
+      if (_.isArray(events)) {
+        this._events[eventName] = _.filter(events, function(event) {
+          return (event.moduleName == null) || event.moduleName !== moduleName;
+        });
+        break;
+      }
+      if ((events.moduleName != null) && events.moduleName === moduleName) {
+        delete this._events[eventName];
+      }
+    }
+    return this.info("Unloaded module " + moduleName);
   };
 
-  exports.prototype.addListener = function() {
-    var event, fn, middlewares, _i;
-    event = arguments[0], middlewares = 3 <= arguments.length ? __slice.call(arguments, 1, _i = arguments.length - 1) : (_i = 1, []), fn = arguments[_i++];
-    return exports.__super__.addListener.call(this, event, this.wrap(fn, middlewares));
+  exports.prototype.moduleInstance = function(moduleName) {
+    var _this = this;
+    return _.extend(_.omit(this, ['on']), {
+      on: function() {
+        var event, fn, middlewares, wrapped, _i;
+        event = arguments[0], middlewares = 3 <= arguments.length ? __slice.call(arguments, 1, _i = arguments.length - 1) : (_i = 1, []), fn = arguments[_i++];
+        wrapped = _this.wrap(fn, middlewares);
+        wrapped.moduleName = moduleName;
+        return _this.addListener(event, wrapped);
+      }
+    });
   };
 
   exports.prototype.on = function() {
-    return this.addListener.apply(this, arguments);
+    var event, fn, middlewares, _i;
+    event = arguments[0], middlewares = 3 <= arguments.length ? __slice.call(arguments, 1, _i = arguments.length - 1) : (_i = 1, []), fn = arguments[_i++];
+    return this.addListener(event, this.wrap(fn, middlewares));
   };
 
   exports.prototype.once = function() {
