@@ -31,7 +31,7 @@ describe 'Middleware', ->
     bot.emit 'test', 1, 2, 3, 4
 
 
-  it 'should be possible to register during event handler registeration', (done) ->
+  it 'should be possible to register during event handler registration', (done) ->
     bot = createBot()
 
     middleware = (args..., next) -> done()
@@ -60,7 +60,7 @@ describe 'Multiple middlewares', ->
     bot.on 'test', ->
     bot.emit 'test'
 
-  it 'should be used after they are registed during event registeration', (done) ->
+  it 'should be used after they are registed during event registration', (done) ->
     bot = createBot()
 
     i = 0
@@ -77,7 +77,7 @@ describe 'Multiple middlewares', ->
     bot.on 'test', middleware1, middleware2, ->
     bot.emit 'test'
 
-  it 'should be used in the registeration order', (done) ->
+  it 'should be used in the registration order', (done) ->
     bot = createBot()
     i = 0
     middleware1 = (args..., next) ->
@@ -93,7 +93,7 @@ describe 'Multiple middlewares', ->
     bot.on 'test', ->
     bot.emit 'test'
 
-  it 'should be used in the registeration order when registered during event registeration', (done) ->
+  it 'should be used in the registration order when registered during event registration', (done) ->
     bot = createBot()
     i = 0
     middleware1 = (args..., next) ->
