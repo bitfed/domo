@@ -1,79 +1,81 @@
 _      = require 'underscore'
 assert = require 'assert'
 
-Domo   = require '../index'
+Bot = require '../index'
 
-createRes = (msg) ->
-  args: ['#test', msg]
-  user: 'Test'
-  prefix: '!test@test.com'
+createBot = ->
+  new Bot 'irc.datnode.net', 'TestBot',
+    autoConnect: false
 
 
 describe 'Middleware wrapper', ->
 
   it 'should pass the right arguments all the way to the final function', (done) ->
-    domo = new Domo()
+    bot = createBot()
 
     mw1 = (res, next) ->
-      assert.equal res.message, 'works'
+      assert.equal res.a, 1
       next()
 
     mw2 = (res, next) ->
-      assert.equal res.message, 'works'
+      assert.equal res.a, 1
       next()
 
     fn = (res) ->
-      assert.equal res.message, 'works'
+      assert.equal res.a, 1
       done()
 
-    domo.wrap(fn, [mw1, mw2]) createRes 'works'
+    bot.wrap(fn, [mw1, mw2])
+      a: 1
+      b: 2
 
   it 'should pass object through middlewares', (done) ->
-    domo = new Domo()
+    bot = createBot()
 
     obj =
       foo: 'bar'
       lol: 'cat'
 
     mw1 = (res, next) ->
-      assert.equal res.message, obj
+      assert.equal res, obj
       next()
 
     mw2 = (res, next) ->
-      assert.equal res.message, obj
+      assert.equal res, obj
       next()
 
     fn = (res) ->
-      assert.equal res.message, obj
+      assert.equal res, obj
       done()
 
-    domo.wrap(fn, [mw1, mw2]) createRes obj
+    bot.wrap(fn, [mw1, mw2]) obj
 
 
   it 'should pass changed res object through middlewares', (done) ->
-    domo = new Domo()
+    bot = createBot()
 
     mw1 = (res, next) ->
       next()
 
     mw2 = (res, next) ->
-      res.foo = 'hello'
+      res.foo = 'bar'
       next()
 
     fn = (res) ->
-      assert.equal res.foo, 'hello'
+      assert.equal res.foo, 'bar'
       done()
 
-    domo.wrap(fn, [mw1, mw2]) createRes 'hello world'
+    bot.wrap(fn, [mw1, mw2])
+      a: 1
 
   it 'should remain the context', (done) ->
-    domo = new Domo()
+    bot = createBot()
 
     mw1 = (res, next) -> next()
     mw2 = (res, next) -> next()
 
     fn = (res) ->
-      assert.equal this, domo
+      assert.equal this, bot
       done()
 
-    domo.wrap(fn, [mw1, mw2]) createRes 'hello world'
+    bot.wrap(fn, [mw1, mw2]) 'hello world'
