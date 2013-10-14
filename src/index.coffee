@@ -1,10 +1,13 @@
+Q            = require 'q'
 fs           = require 'fs'
 irc          = require 'irc'
+async        = require 'async'
 colors       = require 'colors'
 Router       = require 'routes'
 EventEmitter = require('events').EventEmitter
 _            = require 'underscore'
 _.str        = require 'underscore.string'
+
 
 pack = JSON.parse fs.readFileSync "#{__dirname}/package.json"
 
@@ -13,10 +16,11 @@ registerDefaultRoutes = (domo) ->
     domo.say res.channel, """
       h :) v#{pack.version}
       Current channels: #{(chan for chan of domo.channels).join(', ')}
+      Loaded modules: #{(mod for mod of domo.modules).join(', ')}
       #{pack.repository.url}
       """
   domo.route '!auth :username :password', domo.authenticate, (res) ->
-    domo.say res.channel, "You are now authed. Hi #{_.str.capitalize(res.user.username)}!"
+    domo.say res.nick, "You are now authed. Hi #{_.str.capitalize(res.user.username)}!"
 
   domo.route '!join :channel', domo.requiresUser, (res) ->
     domo.join res.params.channel
@@ -36,6 +40,31 @@ registerDefaultRoutes = (domo) ->
     domo.stop res.params.module, (err) ->
       domo.say res.channel, err if err?
       domo.say res.channel, "Module '#{res.params.module}' stopped!"
+
+  domo.route '!reload', domo.requiresUser, (res) ->
+    _.flatten(_.map domo.modules, (module, moduleName) ->
+      [
+        Q.nfcall(domo.stop, moduleName),
+        Q.nfcall(domo.load, moduleName)
+      ]
+    ).reduce(Q.when, Q())
+      .then ->
+        domo.say res.channel, "Reloaded modules #{_.keys(domo.modules).join(', ')}!"
+      .catch (e) ->
+        domo.error e.message
+        domo.say res.channel, "Couldn't reload all modules"
+
+
+  domo.route '!reload :module', domo.requiresUser, (res) ->
+    [
+      Q.nfcall(domo.stop, res.params.module),
+      Q.nfcall(domo.load, res.params.module)
+    ].reduce(Q.when, Q())
+      .then ->
+        domo.say res.channel, "Module '#{res.params.module}' reloaded!"
+      .catch (e) ->
+        domo.error e.message
+        domo.say res.channel, "Couldn't reload module '#{res.params.module}'"
 
 
 class Domo extends EventEmitter
@@ -70,12 +99,13 @@ class Domo extends EventEmitter
     try
       module = require(mod)
     catch err
+
       msg = if err.code is 'MODULE_NOT_FOUND'
         "Module #{mod} not found"
       else
         "Module #{mod} cannot be loaded"
 
-      @error msg
+      @error msg, err.message
       return cb?(msg)
 
     if @modules.hasOwnProperty mod
