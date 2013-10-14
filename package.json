@@ -1,19 +1,16 @@
 {
-  "name": "domo-kun",
-  "version": "0.2.0",
+  "name": "fdongles",
+  "version": "0.3.2",
   "engines": {
-    "node": "0.9.3"
+    "node": "~0.10.20"
   },
   "dependencies": {
     "irc": "~0.3.6",
     "underscore": "~1.4.4",
-    "underscore.string": "~2.3.3",
-    "routes": "~0.2.0",
-    "colors": "~0.6.2",
-    "q": "~0.9.7"
+    "colors": "~0.6.2"
   },
   "readmeFilename": "README.md",
-  "description": "The most awesome thing ever",
+  "description": "An IRC framework that supports plugin modules and middleware",
   "devDependencies": {
     "james": "~0.1.15",
     "james-uglify": "~0.1.0",
@@ -21,12 +18,25 @@
   },
   "repository": {
     "type": "git",
-    "url": "git://github.com/rikukissa/domo.git"
+    "url": "git://github.com/Circlepuller/ForkingDongles.git"
   },
   "keywords": [
     "irc",
-    "bot"
+    "bot",
+    "fdongles",
+    "forkingdongles",
+    "forking",
+    "dongles"
   ],
-  "author": "Riku Rouvila",
+  "contributors": [
+    {
+      "name": "Riku Rouvila",
+      "email": "riku.rouvila@leonidasoy.fi"
+    },
+    {
+      "name": "Dan Saunders",
+      "email": "dsaunders@dansaunders.me"
+    }
+  ],
   "license": "BSD"
 }
