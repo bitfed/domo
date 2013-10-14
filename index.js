@@ -106,21 +106,19 @@ module.exports = (function(_super) {
       return this.error("Module " + moduleName + " already loaded");
     }
     this.modules[moduleName] = new moduleClass(this.moduleInstance(moduleName));
+    this.modules[moduleName].classInstance = moduleClass != null;
     return this.info("Loaded module " + moduleName);
   };
 
-  exports.prototype.unload = function(moduleName, inRequireCache) {
+  exports.prototype.unload = function(moduleName) {
     var eventName, events, _base, _ref;
-    if (inRequireCache == null) {
-      inRequireCache = true;
-    }
     if (!this.modules.hasOwnProperty(moduleName)) {
       return this.error("Module " + mod + " not loaded");
     }
     if (typeof (_base = this.modules[moduleName]).destruct === "function") {
       _base.destruct();
     }
-    if (inRequireCache) {
+    if (this.modules[moduleName].classInstance == null) {
       delete require.cache[require.resolve(moduleName)];
     }
     delete this.modules[moduleName];

@@ -50,17 +50,19 @@ class module.exports extends irc.Client
       return @error "Module #{moduleName} already loaded"
 
     @modules[moduleName] = new moduleClass @moduleInstance(moduleName)
+    @modules[moduleName].classInstance = moduleClass?
 
     @info "Loaded module #{moduleName}"
 
 
-  unload: (moduleName, inRequireCache = true) =>
+  unload: (moduleName) =>
     unless @modules.hasOwnProperty moduleName
       return @error "Module #{mod} not loaded"
 
     @modules[moduleName].destruct?()
 
-    delete require.cache[require.resolve(moduleName)] if inRequireCache
+    unless @modules[moduleName].classInstance?
+      delete require.cache[require.resolve(moduleName)]
     delete @modules[moduleName]
 
     for eventName, events of @._events
